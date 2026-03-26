@@ -38,18 +38,6 @@ C:\Users\DELL\Downloads\demo1\index.html
 - ✅ Responsive design
 - ✅ Data lưu trong localStorage
 
-## 📦 Sản phẩm mẫu
-
-Website đã có sẵn 8 sản phẩm mẫu:
-- iPhone 15 Pro Max
-- Samsung Galaxy S24 Ultra
-- MacBook Pro M3
-- Dell XPS 15
-- AirPods Pro 2
-- Apple Watch Series 9
-- iPad Pro M2
-- Sony WH-1000XM5
-
 ## 🎯 Hướng dẫn test
 
 ### Test trang chủ
