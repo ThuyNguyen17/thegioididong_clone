@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout}">
+
+<head>
+    <title>Giỏ hàng</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link th:href="@{/css/style.css}" rel="stylesheet" />
+</head>
+
+<body>
+    <th:block th:replace="~{fragments/header :: siteHeader}"></th:block>
+
+    <div class="cart-mockup">
+
+        <!-- Delivery -->
+        <div class="cart-delivery-tabs">
+            <label><input type="radio" name="delivery" checked> Giao tận nơi</label>
+            <label><input type="radio" name="delivery"> Nhận tại siêu thị</label>
+        </div>
+
+        <!-- Address -->
+        <div class="cart-address-box">
+            <div>📍 Thành phố Hồ Chí Minh</div>
+            <div class="cart-address-note">Vui lòng cung cấp thông tin nhận hàng</div>
+        </div>
+
+        <!-- Empty Cart -->
+        <div th:if="${cartItems.isEmpty()}" class="cart-empty-box">
+            Giỏ hàng đang trống.
+            <a href="/" class="btn btn-warning btn-sm ms-2">Mua ngay</a>
+        </div>
+
+        <!-- Cart Items -->
+        <div th:unless="${cartItems.isEmpty()}" class="cart-item-list">
+
+            <article class="cart-item-card" th:each="item : ${cartItems}">
+
+                <div class="cart-item-media">
+                    <img th:if="${item.product.imageUrl}" th:src="@{/images/{img}(img=${item.product.imageUrl})}"
+                        th:alt="${item.product.name}">
+
+                    <div th:unless="${item.product.imageUrl}" class="cart-item-noimg">
+                        No image
+                    </div>
+                </div>
+
+                <div class="cart-item-main">
+                    <div class="cart-item-row-top">
+                        <h4 th:text="${item.product.name}">Tên sản phẩm</h4>
+
+                        <div class="cart-item-price" th:text="${item.unitPriceFormatted}">
+                            0đ
+                        </div>
+                    </div>
+
+                    <div class="cart-item-option">Màu bạc</div>
+                    <div class="cart-item-bottom">
+
+                        <a class="cart-item-remove" th:href="@{/cart/remove/{id}(id=${item.product.id})}">
+                            Xóa
+                        </a>
+
+                        <div class="cart-qty-group">
+                            <a th:href="@{/cart/decrease/{id}(id=${item.product.id})}" class="qty-btn"
+                                th:attr="data-product-id=${item.product.id},data-direction=-1">-</a>
+                            <span class="qty-value" th:text="${item.quantity}">1</span>
+                            <a th:href="@{/cart/increase/{id}(id=${item.product.id})}" class="qty-btn"
+                                th:attr="data-product-id=${item.product.id},data-direction=1">+</a>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+        <!-- Voucher -->
+        <section class="voucher-container" th:unless="${cartItems.isEmpty()}">
+            <div th:if="${appliedVoucher == null}">
+                <div class="voucher-title">
+                    <span>🎟️</span> Voucher có thể dùng
+                </div>
+
+                <div th:if="${#lists.isEmpty(availableVouchers)}" class="text-center py-3 bg-light rounded-3">
+                    <p class="text-muted small mb-1">Bạn chưa có voucher nào.</p>
+                    <a th:href="@{/reward}" class="text-primary fw-bold small text-decoration-none">Đổi điểm lấy quà
+                        ngay ➜</a>
+                </div>
+
+                <div th:each="v : ${availableVouchers}" class="voucher-card">
+                    <div class="voucher-left">🏷️</div>
+                    <div class="voucher-right">
+                        <div class="voucher-info">
+                            <h6 th:text="${v.code}">CODE</h6>
+                            <p th:text="${v.description}">Mô tả voucher...</p>
+                            <span class="text-danger fw-bold small"
+                                th:text="'-' + ${#numbers.formatDecimal(v.discountAmount,0,'COMMA',0,'POINT') + 'đ'}">-0đ</span>
+                        </div>
+                        <form th:action="@{/cart/apply-voucher}" method="post">
+                            <input type="hidden" name="voucherCode" th:value="${v.code}">
+                            <button type="submit" class="btn-apply-voucher">Dùng ngay</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${appliedVoucher != null}" class="applied-voucher-card">
+                <div>
+                    <div class="applied-tag">Ưu đãi đã áp dụng</div>
+                    <h5 class="mb-1 text-dark fw-bold" th:text="${appliedVoucher.code}">CODE</h5>
+                    <div class="applied-value"
+                        th:text="'-' + ${#numbers.formatDecimal(voucherDiscount,0,'COMMA',0,'POINT') + 'đ'}">-0đ</div>
+                    <small class="text-muted" th:text="${appliedVoucher.description}">Mô tả</small>
+                </div>
+                <a th:href="@{/cart/remove-voucher}" class="btn btn-outline-danger btn-sm rounded-pill px-3">Gỡ
+                    voucher</a>
+            </div>
+        </section>
+
+        <!-- Total -->
+        <section class="cart-total-box" th:unless="${cartItems.isEmpty()}">
+            <div class="cart-total-row">
+                <span>Tạm tính</span>
+                <strong class="total-subtotal"
+                    th:text="${#numbers.formatDecimal(cartSubtotal,0,'COMMA',0,'POINT') + 'đ'}">0đ</strong>
+            </div>
+            <div class="cart-total-row">
+                <span>Phí giao hàng</span>
+                <strong class="total-shipping"
+                    th:text="${#numbers.formatDecimal(shippingFee,0,'COMMA',0,'POINT') + 'đ'}">0đ</strong>
+            </div>
+            <div class="cart-total-row" th:if="${voucherDiscount > 0}">
+                <span>Giảm giá voucher</span>
+                <strong class="total-discount text-success"
+                    th:text="'-' + ${#numbers.formatDecimal(voucherDiscount,0,'COMMA',0,'POINT') + 'đ'}">0đ</strong>
+            </div>
+            <div class="cart-total-row">
+                <strong>Tổng thanh toán</strong>
+                <strong class="total-grand"
+                    th:text="${#numbers.formatDecimal(cartTotal,0,'COMMA',0,'POINT') + 'đ'}">0đ</strong>
+            </div>
+
+            <div class="cart-point-row">
+                Điểm tích lũy
+                <span class="reward-points"
+                    th:text="${#numbers.formatDecimal(rewardPoints,0,'COMMA',0,'POINT') + ' điểm'}">0 điểm</span>
+            </div>
+        </section>
+
+        <!-- Order -->
+        <a th:href="@{/order/checkout}" class="cart-order-btn"
+            th:classappend="${cartItems.isEmpty()} ? ' disabled-link' : ''">
+            Đặt hàng
+        </a>
+    </div>
+
+    <style>
+        .cart-page-wrap {
+            background: #f7f7f8;
+            padding: 16px 0 24px;
+        }
+
+        .cart-mockup {
+            max-width: 760px;
+            margin: 20px auto;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+
+        .cart-delivery-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid #ececec;
+            background: #f7f7f7;
+        }
+
+        .cart-delivery-tabs label {
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .cart-address-box {
+            margin: 12px;
+            border: 1px solid #e7e7e7;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .cart-address-note {
+            color: #f97316;
+            margin-top: 3px;
+            font-size: 13px;
+        }
+
+        .cart-empty-box {
+            margin: 12px;
+            padding: 16px;
+            background: #f9fafb;
+            border: 1px dashed #d1d5db;
+            border-radius: 8px;
+        }
+
+        .cart-item-list {
+            padding: 0 12px;
+        }
+
+        .cart-item-card {
+            display: grid;
+            grid-template-columns: 88px 1fr;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #ececec;
+        }
+
+        .cart-item-media {
+            width: 88px;
+            height: 88px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+        }
+
+        .cart-item-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cart-item-noimg {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .cart-item-row-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .cart-item-row-top h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .cart-item-price {
+            font-size: 20px;
+            color: #d70018;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .cart-item-option {
+            margin-top: 8px;
+            font-size: 12px;
+            display: inline-block;
+            background: #f3f4f6;
+            border-radius: 6px;
+            padding: 3px 8px;
+        }
+
+        .cart-item-promo {
+            margin-top: 8px;
+            color: #2563eb;
+            font-size: 12px;
+        }
+
+        .cart-item-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+        }
+
+        .cart-item-remove {
+            font-size: 13px;
+            color: #6b7280;
+            text-decoration: none;
+        }
+
+        .cart-qty-group {
+            display: inline-flex;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .cart-qty-group a,
+        .cart-qty-group span {
+            width: 30px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #111827;
+            font-size: 14px;
+        }
+
+        .cart-subtotal-row,
+        .cart-total-box,
+        .cart-policy-check,
+        .cart-block {
+            border-top: 1px solid #ececec;
+            padding: 12px;
+        }
+
+        .cart-subtotal-row,
+        .cart-total-row,
+        .cart-inline-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cart-block h3 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+
+        .cart-block label {
+            display: block;
+            margin: 6px 0;
+            font-size: 14px;
+        }
+
+        .cart-switch {
+            width: 38px;
+            height: 20px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            position: relative;
+        }
+
+        .cart-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+        }
+
+        .cart-total-row {
+            font-size: 22px;
+        }
+
+        .cart-total-row strong:last-child {
+            color: #111827;
+        }
+
+        .cart-point-row {
+            margin-top: 4px;
+            color: #4b5563;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .cart-more-pay {
+            font-size: 13px;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .cart-policy-check {
+            font-size: 13px;
+            color: #374151;
+            display: block;
+        }
+
+        .cart-policy-check a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .cart-order-btn {
+            display: block;
+            margin: 0 12px 12px;
+            text-align: center;
+            background: #f97316;
+            color: #fff;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 12px;
+            text-decoration: none;
+        }
+
+        .cart-order-btn:hover {
+            background: #ea580c;
+            color: #fff;
+        }
+
+        .disabled-link {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* New Voucher Styles */
+        .voucher-container {
+            padding: 12px;
+            background: #fff;
+        }
+
+        .voucher-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1a1a1a;
+        }
+
+        .voucher-card {
+            display: flex;
+            background: #fff;
+            border: 1px solid #ffba8d;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .voucher-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 127, 44, 0.15);
+        }
+
+        .voucher-card::before,
+        .voucher-card::after {
+            content: '';
+            position: absolute;
+            left: 70px;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            border: 1px solid #ffba8d;
+            z-index: 2;
+        }
+
+        .voucher-card::before {
+            top: -7px;
+        }
+
+        .voucher-card::after {
+            bottom: -7px;
+        }
+
+        .voucher-left {
+            width: 76px;
+            background: linear-gradient(135deg, #ff9d6c, #f97316);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 24px;
+            flex-shrink: 0;
+            border-right: 1px dashed #ffba8d;
+        }
+
+        .voucher-right {
+            flex-grow: 1;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .voucher-info h6 {
+            margin: 0 0 4px;
+            font-weight: 700;
+            color: #f97316;
+            font-size: 14px;
+        }
+
+        .voucher-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .btn-apply-voucher {
+            background: #f97316;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn-apply-voucher:hover {
+            background: #ea580c;
+        }
+
+        /* Applied Voucher */
+        .applied-voucher-card {
+            background: #fffaf5;
+            border: 1px solid #f97316;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.1);
+        }
+
+        .applied-tag {
+            background: #f97316;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            display: inline-block;
+        }
+
+        .applied-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #d70018;
+        }
+
+        @media (max-width: 768px) {
+            .cart-page-wrap {
+                padding: 8px 0 16px;
+            }
+
+            .cart-item-row-top {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .cart-item-price {
+                font-size: 18px;
+            }
+
+            .cart-block h3 {
+                font-size: 20px;
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const updateTotals = (data) => {
+                const subtotalEl = document.querySelector('.subtotal-value');
+                const totalSubtotalEl = document.querySelector('.total-subtotal');
+                const shippingEl = document.querySelector('.total-shipping');
+                const grandEl = document.querySelector('.total-grand');
+                const rewardEl = document.querySelector('.reward-points');
+                const countEl = document.querySelector('.cart-total-items');
+
+                if (subtotalEl && data.cartSubtotalFormatted) subtotalEl.textContent = data.cartSubtotalFormatted;
+                if (totalSubtotalEl && data.cartSubtotalFormatted) totalSubtotalEl.textContent = data.cartSubtotalFormatted;
+                if (shippingEl && data.shippingFeeFormatted) shippingEl.textContent = data.shippingFeeFormatted;
+                if (grandEl && data.cartTotalFormatted) grandEl.textContent = data.cartTotalFormatted;
+                if (rewardEl && data.rewardPoints !== undefined) {
+                    rewardEl.textContent = new Intl.NumberFormat('vi-VN').format(data.rewardPoints) + ' điểm';
+                }
+                if (countEl && data.cartTotalItems !== undefined) countEl.textContent = data.cartTotalItems;
+            };
+
+            const handleQtyChange = (btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const direction = Number(btn.dataset.direction || 0);
+                    const productId = btn.dataset.productId;
+                    const card = btn.closest('.cart-item-card');
+                    const qtySpan = card.querySelector('.qty-value');
+                    const currentQty = parseInt(qtySpan.textContent, 10) || 0;
+                    const nextQty = Math.max(currentQty + direction, 0);
+
+                    fetch('/cart/quantity', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ productId, quantity: nextQty })
+                    }).then(resp => resp.ok ? resp.json() : Promise.reject())
+                        .then(data => {
+                            if (data.removed) {
+                                card.remove();
+                                if (!document.querySelector('.cart-item-card')) {
+                                    window.location.reload();
+                                    return;
+                                }
+                            } else {
+                                qtySpan.textContent = data.quantity;
+                            }
+                            updateTotals(data);
+                        })
+                        .catch(() => window.location.reload());
+                });
+            };
+
+            document.querySelectorAll('.qty-btn').forEach(handleQtyChange);
+        });
+    </script>
+</body>
+
+</html>

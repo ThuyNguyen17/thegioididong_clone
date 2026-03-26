@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet"/>
+    <link th:href="@{/css/product-card.css}" rel="stylesheet"/>
+    <style>
+        .home-page { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
+        .home-main { flex: 1; background-color: rgba(215, 0, 24, 0.8); border-radius: 10px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+        .home-section + .home-section { margin-top: 28px; }
+        .home-title { font-size: 28px; font-weight: 800; margin: 0 0 16px; color: #ffff; }
+        .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+        .price-old { color: #6b7280; text-decoration: line-through; font-size: 14px; margin-bottom: 4px; }
+        .price-new { color: #d70018; font-weight: 800; font-size: 20px; }
+        .cart-btn { margin-top: 10px; width: 100%; font-weight: 700; }
+        .main-banner { border-radius: 10px; width: 100%; height: auto; margin-bottom: 20px; }
+        .promo-progress { height: 12px; background: rgba(255,255,255,0.25); border: 1px solid rgba(0,0,0,.05); border-radius: 999px; overflow: hidden; }
+        .promo-remaining { margin: 10px 0 12px; }
+        .promo-chip { display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #fff3cd, #ffe8a3); color: #7a3b00; font-weight: 800; padding: 8px 12px; border-radius: 999px; box-shadow: 0 10px 25px rgba(0,0,0,.12); letter-spacing: 0.2px; }
+        .promo-chip .dot { width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 6px rgba(245,158,11,.18); }
+        .promo-badge { position: absolute; top: 10px; right: 10px; background: #f97316; color: #fff; font-weight: 800; padding: 6px 10px; border-radius: 999px; font-size: 12px; box-shadow: 0 10px 20px rgba(0,0,0,.15); }
+        .promo-card { position: relative; overflow: hidden; }
+        .sakura-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1100;
+        }
+        .sakura-petal {
+            position: absolute;
+            top: -10vh;
+            width: 18px;
+            height: 18px;
+            opacity: .9;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            will-change: transform, opacity;
+            animation-name: sakura-fall;
+            animation-timing-function: linear;
+            animation-fill-mode: forwards;
+        }
+        @keyframes sakura-fall {
+            0% {
+                transform: translate3d(0, -10vh, 0) rotate(0deg);
+                opacity: .95;
+            }
+            80% { opacity: .9; }
+            100% {
+                transform: translate3d(var(--drift, 80px), 110vh, 0) rotate(540deg);
+                opacity: 0;
+            }
+        }
+        @media (max-width: 992px) {
+            .home-page { padding: 16px 10px; }
+            .home-main { padding: 14px; }
+            .home-title { font-size: 24px; }
+        }
+      /* Thanh hiển thị suất khuyến mãi */
+        .promo-bar {
+            position: relative;
+            width: 100%;
+            height: 22px;
+            background: #ffe6b3;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .promo-bar__fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0%;
+            background: linear-gradient(90deg,#ffb200,#ffd24d);
+            border-radius: 999px;
+        }
+
+        .promo-bar__icon {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+
+        .promo-bar__text {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: #5a3c00;
+        }
+        body{
+             background-image: url("../images/bg-main.png");
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: siteHeader}"></th:block>
+<div class="sakura-overlay" aria-hidden="true"></div>
+
+<main class="main-layout home-page">
+    <aside class="sidebar-left">
+        <img class="side-image"
+             src="https://cdnv2.tgdd.vn/mwg-static/tgdd/Banner/57/ce/57ce7cd2a7a892afd7f0e1826f9549fd.png"
+             alt="Banner trái" loading="lazy"/>
+    </aside>
+
+    <div class="home-main">
+        <img th:src="@{/images/c3d3e8ead6a381803888a7dde0b8da90.png}" class="main-banner" alt="Banner chính">
+
+        <section class="home-section">
+
+            <h2 class="home-title">Sản phẩm giảm giá</h2>
+
+            <div class="home-grid" th:if="${!#lists.isEmpty(discountedProducts)}">
+
+                <article class="product-card promo-card"
+
+                         th:each="product : ${discountedProducts}"
+
+                         th:with="
+cartQty=${cartQuantities != null && cartQuantities.get(product.id) != null ? cartQuantities.get(product.id) : 0},
+baseStock=${product.promoStock != null ? product.promoStock : 0},
+remaining=${baseStock - cartQty},
+total=${product.promoTotal != null && product.promoTotal > baseStock ? product.promoTotal : baseStock},
+percent=${total > 0 ? (remaining * 100.0 / total) : 0},
+discountPercent=${product.discountedPrice != null && product.price > 0 ? ((product.price - product.discountedPrice) * 100.0 / product.price) : 0}
+">
+
+                    <div class="promo-badge"
+                         th:text="|SALE -${#numbers.formatDecimal(discountPercent,0,'COMMA',0,'POINT')}%|">
+                    </div>
+
+                    <div class="product-thumb">
+
+                        <a th:href="@{/product/detail/{id}(id=${product.id})}">
+                            <img th:if="${product.imageUrl}"
+                                 th:src="@{/images/{img}(img=${product.imageUrl})}"
+                                 th:alt="${product.name}">
+                        </a>
+
+                        <span th:unless="${product.imageUrl}" class="no-image">
+Chưa có ảnh
+</span>
+
+                    </div>
+
+                    <div class="product-info">
+
+                        <h3 class="product-name">
+                            <a th:href="@{/product/detail/{id}(id=${product.id})}" th:text="${product.name}" style="text-decoration: none; color: inherit;"></a>
+                        </h3>
+
+                        <div class="price-old"
+                             th:text="${product.priceFormatted}">
+                        </div>
+
+                        <div class="price-new"
+                             th:text="${product.discountedPriceFormatted}">
+                        </div>
+
+                        <!-- thanh suất khuyến mãi -->
+
+                        <div class="promo-bar">
+
+                            <div class="promo-bar__fill"
+                                 th:style="|width:${percent}%|">
+                            </div>
+
+                            <span class="promo-bar__icon">🔥</span>
+
+                            <span class="promo-bar__text"
+                                  th:text="|Còn ${remaining}/${total} suất|">
+Còn 0/0 suất
+</span>
+
+                        </div>
+
+                        <form th:action="@{/cart/add}" method="post" style="margin-top: auto;">
+
+                            <input type="hidden"
+                                   name="productId"
+                                   th:value="${product.id}">
+
+                            <input type="hidden"
+                                   name="quantity"
+                                   value="1">
+
+                            <button type="submit"
+                                    class="btn btn-warning cart-btn"
+                                    th:disabled="${remaining <= 0}"
+                                    th:text="${remaining > 0 ? 'Mua Ngay' : 'Hết suất KM'}">
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </article>
+
+            </div>
+
+            <div class="alert alert-light"
+                 th:if="${#lists.isEmpty(discountedProducts)}">
+                Chưa có sản phẩm giảm giá
+            </div>
+
+        </section>
+        <section class="home-section">
+
+            <h2 class="home-title">Sản phẩm không giảm giá</h2>
+
+            <div class="home-grid" th:if="${!#lists.isEmpty(normalProducts)}">
+
+                <article class="product-card"
+
+                         th:each="product : ${normalProducts}"
+
+                         th:with="
+remaining=${product.promoStock != null ? product.promoStock : 0},
+total=${product.promoTotal != null ? product.promoTotal : 0},
+percent=${total > 0 ? (remaining * 100.0 / total) : 0}
+">
+
+                    <div class="product-thumb">
+
+                        <a th:href="@{/product/detail/{id}(id=${product.id})}">
+                            <img th:if="${product.imageUrl}"
+                                 th:src="@{/images/{img}(img=${product.imageUrl})}"
+                                 th:alt="${product.name}">
+                        </a>
+
+                    </div>
+
+                    <div class="product-info">
+
+                        <h3 class="product-name">
+                            <a th:href="@{/product/detail/{id}(id=${product.id})}" th:text="${product.name}" style="text-decoration: none; color: inherit;"></a>
+                        </h3>
+
+                        <div class="price-new"
+                             th:text="${product.priceFormatted}">
+                        </div>
+
+                        <form th:action="@{/cart/add}" method="post" style="margin-top: auto;">
+
+                            <input type="hidden"
+                                   name="productId"
+                                   th:value="${product.id}">
+
+                            <input type="hidden"
+                                   name="quantity"
+                                   value="1">
+
+                            <button class="btn btn-warning w-100 mt-2"
+                                    th:disabled="${product.promoStock != null && product.promoStock <= 0}">
+                                Mua ngay
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </article>
+
+            </div>
+
+            <div class="alert alert-light"
+                 th:if="${#lists.isEmpty(normalProducts)}">
+                Chưa có sản phẩm không giảm giá
+            </div>
+
+        </section>
+    </div>
+
+    <aside class="sidebar-right">
+        <img class="side-image"
+             src="https://cdnv2.tgdd.vn/mwg-static/tgdd/Banner/d8/ab/d8ab342d5f6f12580593ebc2adb9b663.png"
+             alt="Banner phải" loading="lazy"/>
+    </aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function initCherryBlossomEffect() {
+        const overlay = document.querySelector('.sakura-overlay');
+        if (!overlay) return;
+
+        const flowerImages = [
+            '/images/flower02639052144885516921.png',
+            '/images/flower03639052145086240779.png',
+            '/images/flower01639052144697723275.png'
+        ];
+
+        function spawnPetal() {
+            const petal = document.createElement('span');
+            petal.className = 'sakura-petal';
+            petal.style.left = Math.random() * 100 + 'vw';
+            petal.style.width = 14 + Math.random() * 20 + 'px';
+            petal.style.height = petal.style.width;
+            petal.style.setProperty('--drift', (Math.random() * 220 - 110) + 'px');
+            petal.style.animationDuration = (7 + Math.random() * 7) + 's';
+            petal.style.animationDelay = (Math.random() * 1.5) + 's';
+            petal.style.backgroundImage = 'url(' + flowerImages[Math.floor(Math.random() * flowerImages.length)] + ')';
+            overlay.appendChild(petal);
+            petal.addEventListener('animationend', () => petal.remove(), { once: true });
+        }
+
+        for (let i = 0; i < 18; i++) {
+            setTimeout(spawnPetal, i * 220);
+        }
+
+        setInterval(spawnPetal, 380);
+    })();
+</script>
+</body>
+</html>

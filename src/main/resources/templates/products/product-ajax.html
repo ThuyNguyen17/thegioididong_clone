@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Sản Phẩm (AJAX)</title>
+    <!-- Bootstrap CSS for basic styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .container { margin-top: 30px; }
+        .table-responsive { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="mb-4">Quản lý Sản Phẩm (AJAX)</h2>
+
+    <!-- Add / Edit Product Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0" id="formTitle">Thêm Sản Phẩm Mới</h5>
+        </div>
+        <div class="card-body">
+            <form id="productForm">
+                <input type="hidden" id="productId" name="id">
+                <input type="hidden" id="imageUrl" name="imageUrl">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Tên Sản Phẩm (*)</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="price" class="form-label">Giá (*)</label>
+                        <input type="number" class="form-control" id="price" required>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="discountType" class="form-label">Trang thai giam gia</label>
+                        <select class="form-select" id="discountType">
+                            <option value="none">Khong giam gia</option>
+                            <option value="discounted">Co giam gia</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-none" id="discountPriceWrap">
+                        <label for="discountedPrice" class="form-label">Gia sau giam</label>
+                        <input type="number" class="form-control" id="discountedPrice" min="1" step="0.01">
+                    </div>
+                    <div class="col-md-4 d-none" id="promoStockWrap">
+                        <label for="promoStock" class="form-label">So luong kho</label>
+                        <input type="number" class="form-control" id="promoStock" min="0">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="description" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="description" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="imageFile" class="form-label">Hinh anh san pham</label>
+                        <input type="file" class="form-control" id="imageFile" accept="image/*">
+                    </div>
+                    <div class="col-md-6">
+                        <img id="imagePreview" alt="Preview" style="display:none; max-width: 180px; max-height: 180px; object-fit: cover; border: 1px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+                <!-- Categories Dropdown using Thymeleaf to render options correctly initially. Can also be loaded via AJAX. -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="categoryId" class="form-label">Danh Mục</label>
+                        <select class="form-select" id="categoryId">
+                            <option value="">-- Chọn danh mục --</option>
+                            <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="stock" class="form-label">Số Lượng (Stock)</label>
+                        <input type="number" class="form-control" id="promoStock" value="0">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="btnSave">Lưu Sản Phẩm</button>
+                <button type="button" class="btn btn-secondary" id="btnClear" onclick="clearForm()">Hủy / Thêm Mới</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Product List -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped" id="productTable">
+            <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Tên Sản Phẩm</th>
+                <th>Giá</th>
+                <th>Danh Mục</th>
+                <th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- Products will be appended here via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const apiUrl = '/api/products';
+    const uploadUrl = apiUrl + '/upload';
+
+    function escapeHtml(str) {
+        return String(str ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('\"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function getImageSrc(imageUrl) {
+        if (!imageUrl) return '';
+        return String(imageUrl).includes('://') ? imageUrl : ('/images/' + imageUrl);
+    }
+
+    function isDiscounted(p) {
+        if (!p) return false;
+        const price = Number(p.price || 0);
+        const discountedPrice = Number(p.discountedPrice || 0);
+        return discountedPrice > 0 && discountedPrice < price;
+    }
+
+    function toggleDiscountInput() {
+        const show = $('#discountType').val() === 'discounted';
+        $('#discountPriceWrap').toggleClass('d-none', !show);
+        $('#promoStockWrap').toggleClass('d-none', !show);
+        if (!show) {
+            $('#discountedPrice').val('');
+            $('#promoStock').val('');
+        }
+    }
+
+    function previewImage() {
+        const file = document.getElementById('imageFile').files[0];
+        const preview = document.getElementById('imagePreview');
+        if (!file) {
+            preview.src = '';
+            preview.style.display = 'none';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function uploadImage(file) {
+        const fd = new FormData();
+        fd.append('imageFile', file);
+
+        const resp = await fetch(uploadUrl, { method: 'POST', body: fd });
+        if (!resp.ok) {
+            throw new Error('Upload image failed');
+        }
+        const data = await resp.json();
+        return data.imageUrl || null;
+    }
+
+    // When document is ready, load products
+    $(document).ready(function() {
+        $('#productTable thead').html(`
+            <tr>
+                <th>ID</th>
+                <th>Hinh anh</th>
+                <th>Ten san pham</th>
+                <th>Gia goc</th>
+                <th>Danh muc</th>
+                <th>Trang thai giam gia</th>
+                <th>Mo ta</th>
+                <th>Ton kho</th>
+                <th>Hanh dong</th>
+            </tr>
+        `);
+
+        $('#discountType').on('change', toggleDiscountInput);
+        toggleDiscountInput();
+
+        $('#imageFile').on('change', previewImage);
+
+        loadProducts();
+
+        $('#productForm').submit(async function(e) {
+            e.preventDefault();
+            await saveProduct();
+        });
+    });
+
+    // 1. Hiển thị danh sách sản phẩm (Read)
+    function loadProducts() {
+        $.ajax({
+            url: apiUrl,
+            type: 'GET',
+            success: function(products) {
+                let tbody = $('#productTable tbody');
+                tbody.empty(); // Clear existing rows
+
+                products.forEach(function(p) {
+                    const catName = p.category ? p.category.name : 'N/A';
+                    const discountStatus = isDiscounted(p) ? 'Co giam gia' : 'Khong giam gia';
+                    const img = p.imageUrl
+                        ? `<img src="${getImageSrc(p.imageUrl)}" alt="" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">`
+                        : '';
+
+                    const name = escapeHtml(p.name);
+                    const descRaw = escapeHtml(p.description || '');
+                    const desc = descRaw.length > 80 ? (descRaw.slice(0, 80) + '...') : descRaw;
+                    const price = (p.price != null ? Number(p.price) : 0).toLocaleString('vi-VN') + ' d';
+                    const stock = (p.promoStock !== null && p.promoStock !== undefined) ? p.promoStock : 0;
+
+                    const tr = `<tr>
+                        <td>${p.id}</td>
+                        <td>${img}</td>
+                        <td>${name}</td>
+                        <td>${price}</td>
+                        <td>${escapeHtml(catName)}</td>
+                        <td>${discountStatus}</td>
+                        <td>${desc}</td>
+                        <td>${stock}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editProduct(${p.id})">Sua</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})">Xoa</button>
+                        </td>
+                    </tr>`;
+                    tbody.append(tr);
+                });
+                return;
+ 
+                products.forEach(function(p) {
+                    let catName = p.category ? p.category.name : 'N/A';
+                    let tr = `<tr>
+                        <td>${p.id}</td>
+                        <td>${p.name}</td>
+                        <td>${p.price.toLocaleString('vi-VN')} đ</td>
+                        <td>${catName}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editProduct(${p.id})">Sửa</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})">Xóa</button>
+                        </td>
+                    </tr>`;
+                    tbody.append(tr);
+                });
+            },
+            error: function(err) {
+                console.error("Lỗi khi tải danh sách sản phẩm", err);
+                alert("Không thể tải danh sách sản phẩm!");
+            }
+        });
+    }
+
+    // 2. Thêm hoặc Cập nhật sản phẩm (Create & Update)
+    async function saveProduct() {
+        let id = $('#productId').val();
+        const discountActive = $('#discountType').val() === 'discounted';
+
+        const imageFile = document.getElementById('imageFile').files[0];
+        if (imageFile) {
+            try {
+                const uploaded = await uploadImage(imageFile);
+                $('#imageUrl').val(uploaded || '');
+            } catch (e) {
+                alert('Loi upload anh: ' + e.message);
+                return;
+            }
+        }
+ 
+        let productData = {
+            name: $('#name').val(),
+            price: parseFloat($('#price').val()),
+            description: $('#description').val(),
+            categoryId: $('#categoryId').val() ? parseInt($('#categoryId').val()) : null,
+            promoStock: $('#promoStock').val() ? parseInt($('#promoStock').val()) : 0,
+            imageUrl: $('#imageUrl').val() || null,
+            discountedPrice: discountActive && $('#discountedPrice').val() ? parseFloat($('#discountedPrice').val()) : null
+        };
+
+        if (id) {
+            // Có ID -> Update (PUT)
+            $.ajax({
+                url: apiUrl + '/' + id,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(productData),
+                success: function(updatedProduct) {
+                    alert("Cập nhật sản phẩm thành công!");
+                    clearForm();
+                    loadProducts();
+                },
+                error: function(err) {
+                    console.error("Lỗi khi cập nhật", err);
+                    alert("Lỗi khi cập nhật sản phẩm!");
+                }
+            });
+        } else {
+            // Không có ID -> Create (POST)
+            $.ajax({
+                url: apiUrl,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(productData),
+                success: function(newProduct) {
+                    alert("Thêm sản phẩm thành công!");
+                    clearForm();
+                    loadProducts();
+                },
+                error: function(err) {
+                    console.error("Lỗi khi thêm mới", err);
+                    alert("Lỗi khi thêm sản phẩm mới!");
+                }
+            });
+        }
+    }
+
+    // Prepare form for Edit
+    function editProduct(id) {
+        $.ajax({
+            url: apiUrl + '/' + id,
+            type: 'GET',
+            success: function(product) {
+                $('#formTitle').text('Cập nhật Sản Phẩm (ID: ' + product.id + ')');
+                $('#productId').val(product.id);
+                $('#name').val(product.name);
+                $('#price').val(product.price);
+                $('#description').val(product.description);
+                $('#promoStock').val(product.promoStock);
+
+                $('#imageUrl').val(product.imageUrl || '');
+                $('#imageFile').val('');
+                const imgSrc = getImageSrc(product.imageUrl);
+                if (imgSrc) {
+                    $('#imagePreview').attr('src', imgSrc).show();
+                } else {
+                    $('#imagePreview').attr('src', '').hide();
+                }
+
+                if (isDiscounted(product)) {
+                    $('#discountType').val('discounted');
+                    $('#discountedPrice').val(product.discountedPrice || '');
+                    $('#promoStock').val(product.promoStock || '');
+                } else {
+                    $('#discountType').val('none');
+                    $('#discountedPrice').val('');
+                    $('#promoStock').val('');
+                }
+                toggleDiscountInput();
+
+                if (product.category) {
+                    $('#categoryId').val(product.category.id);
+                } else {
+                    $('#categoryId').val('');
+                }
+                $('#btnSave').text('Cập nhật Sàn Phẩm').removeClass('btn-primary').addClass('btn-success');
+                window.scrollTo(0, 0);
+            },
+            error: function(err) {
+                alert("Không thể lấy thông tin sản phẩm!");
+            }
+        });
+    }
+
+    // 4. Xóa sản phẩm (Delete)
+    function deleteProduct(id) {
+        if (confirm("Bạn có chắc chắn muốn xóa sản phẩm ID = " + id + " không?")) {
+            $.ajax({
+                url: apiUrl + '/' + id,
+                type: 'DELETE',
+                success: function() {
+                    alert("Đã xóa sản phẩm thành công!");
+                    loadProducts();
+                },
+                error: function(err) {
+                    console.error("Lỗi khi xóa", err);
+                    alert("Lỗi khi xóa sản phẩm (Có thể do ràng buộc dữ liệu hóa đơn/v.v..).");
+                }
+            });
+        }
+    }
+
+    // Reset Form
+    function clearForm() {
+        $('#formTitle').text('Thêm Sản Phẩm Mới');
+        $('#productId').val('');
+        $('#name').val('');
+        $('#price').val('');
+        $('#description').val('');
+        $('#categoryId').val('');
+        $('#promoStock').val('0');
+        $('#discountType').val('none');
+        $('#discountedPrice').val('');
+        $('#imageUrl').val('');
+        $('#imageFile').val('');
+        $('#imagePreview').attr('src', '').hide();
+        toggleDiscountInput();
+        $('#btnSave').text('Lưu Sản Phẩm').removeClass('btn-success').addClass('btn-primary');
+    }
+
+</script>
+</body>
+</html>

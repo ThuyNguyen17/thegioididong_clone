@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trung tâm Điểm thưởng</title>
+    <!-- CSRF Token for AJAX -->
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet" />
+    <style>
+        .reward-container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .point-card { background: linear-gradient(135deg, #FF9900 0%, #FFCC33 100%); color: white; border-radius: 15px; padding: 30px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .point-value { font-size: 3rem; font-weight: 700; line-height: 1; }
+        .voucher-card { border: 1px dashed #FF9900; border-radius: 12px; padding: 20px; margin-bottom: 20px; transition: transform 0.2s; background: #fff; }
+        .voucher-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.05); }
+        .voucher-title { font-weight: 700; color: #FF9900; font-size: 1.2rem; }
+        .redeemed-badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: siteHeader}"></th:block>
+
+<main class="reward-container">
+    <div class="point-card text-center">
+        <h2 class="h5 mb-3">Số điểm tích lũy của bạn</h2>
+        <div class="point-value mb-2" th:text="${#numbers.formatDecimal(availablePoints, 0, 'COMMA', 0, 'POINT')}">0</div>
+        <p class="mb-0">Tổng điểm đã kiếm: <span th:text="${#numbers.formatDecimal(earnedPoints, 0, 'COMMA', 0, 'POINT')}">0</span></p>
+        <p class="mb-0">Đã dùng: <span th:text="${#numbers.formatDecimal(redeemedPoints, 0, 'COMMA', 0, 'POINT')}">0</span></p>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <h3 class="mb-4">Đổi Voucher</h3>
+    <div class="row">
+        <!-- Voucher 1 -->
+        <div class="col-md-4">
+            <div class="voucher-card text-center">
+                <div class="voucher-title mb-2">Voucher 50K</div>
+                <p class="text-muted small">Cần 100 điểm</p>
+                <button type="button" class="btn btn-warning w-100" 
+                        th:disabled="${availablePoints < 100}"
+                        onclick="requestOtp('VIP1')">Đổi ngay</button>
+            </div>
+        </div>
+        <!-- Voucher 2 -->
+        <div class="col-md-4">
+            <div class="voucher-card text-center">
+                <div class="voucher-title mb-2">Voucher 120K</div>
+                <p class="text-muted small">Cần 200 điểm</p>
+                <button type="button" class="btn btn-warning w-100" 
+                        th:disabled="${availablePoints < 200}"
+                        onclick="requestOtp('VIP2')">Đổi ngay</button>
+            </div>
+        </div>
+        <!-- Voucher 3 -->
+        <div class="col-md-4">
+            <div class="voucher-card text-center">
+                <div class="voucher-title mb-2">Voucher 350K</div>
+                <p class="text-muted small">Cần 500 điểm</p>
+                <button type="button" class="btn btn-warning w-100" 
+                        th:disabled="${availablePoints < 500}"
+                        onclick="requestOtp('VIP3')">Đổi ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mt-5 mb-4">Lịch sử tích lũy điểm</h3>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Đơn hàng</th>
+                    <th>Trạng thái</th>
+                    <th>Điểm tích lũy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:if="${#lists.isEmpty(pointHistory)}">
+                    <td colspan="3" class="text-center text-muted">Bạn chưa có đơn hàng nào tích lũy điểm.</td>
+                </tr>
+                <tr th:each="order : ${pointHistory}">
+                    <td><a th:href="@{/order/details/{id}(id=${order.id})}" th:text="'#' + ${order.id}">#123</a></td>
+                    <td>
+                        <span th:if="${order.status == 'PAID'}" class="badge bg-success">Đã thanh toán</span>
+                        <span th:if="${order.status == 'PROCESSING'}" class="badge bg-info">Đang xử lý</span>
+                        <span th:unless="${order.status == 'PAID' or order.status == 'PROCESSING'}" th:text="${order.status}" class="badge bg-secondary">Other</span>
+                    </td>
+                    <td class="fw-bold text-success" th:text="'+' + ${#numbers.formatDecimal(order.earnedVipPoints, 0, 'COMMA', 0, 'POINT')}">+0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3 class="mt-5 mb-4">Voucher của bạn</h3>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Mã Voucher</th>
+                    <th>Nội dung</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:if="${#lists.isEmpty(vouchers)}">
+                    <td colspan="3" class="text-center text-muted">Bạn chưa đổi voucher nào.</td>
+                </tr>
+                <tr th:each="v : ${vouchers}">
+                    <td><code class="fw-bold text-dark" th:text="${v.code}">CODE</code></td>
+                    <td th:text="${v.description}">Mô tả</td>
+                    <td>
+                        <span th:if="${!v.used}" class="badge bg-success">Sẵn sàng</span>
+                        <span th:if="${v.used}" class="badge bg-secondary">Đã sử dụng</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal fade" id="otpModal" tabindex="-1" aria-labelledby="otpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="otpModalLabel">Xác thực SMS</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Một mã xác thực (OTP) đã được gửi đến số điện thoại <strong id="displayPhone"></strong></p>
+                    <div class="mb-3">
+                        <label for="otpInput" class="form-label">Nhập mã OTP</label>
+                        <input type="text" class="form-control form-control-lg text-center fw-bold" id="otpInput" placeholder="000000" maxlength="6">
+                    </div>
+                    <div id="otpError" class="text-danger small mb-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Trở lại</button>
+                    <button type="button" class="btn btn-warning" onclick="verifyAndRedeem()">Xác nhận & Đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden form for actual redemption -->
+    <form id="redeemForm" th:action="@{/reward/redeem}" method="post" style="display: none;">
+        <input type="hidden" name="type" id="redeemType">
+        <input type="hidden" name="otp" id="redeemOtp">
+    </form>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    let currentType = '';
+    const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+
+    function requestOtp(type) {
+        currentType = type;
+        const submitBtn = event.target;
+        const originalText = submitBtn.innerText;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang gửi...';
+
+        const formData = new FormData();
+        formData.append('type', type);
+
+        // Add CSRF token if present
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+        
+        const headers = {};
+        if (csrfHeader && csrfToken) {
+            headers[csrfHeader] = csrfToken;
+        }
+
+        fetch('/reward/send-otp', {
+            method: 'POST',
+            body: formData,
+            headers: headers
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
+
+            if (data.success) {
+                document.getElementById('displayPhone').innerText = data.phone;
+                document.getElementById('otpInput').value = '';
+                document.getElementById('otpError').style.display = 'none';
+                otpModal.show();
+            } else {
+                alert(data.message || 'Có lỗi xảy ra khi gửi OTP.');
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
+            console.error('Error:', error);
+            alert('Không thể kết nối đến máy chủ.');
+        });
+    }
+
+    function verifyAndRedeem() {
+        const otp = document.getElementById('otpInput').value;
+        if (!otp || otp.length !== 6) {
+            const errorDiv = document.getElementById('otpError');
+            errorDiv.innerText = 'Vui lòng nhập đúng mã OTP 6 chữ số.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        document.getElementById('redeemType').value = currentType;
+        document.getElementById('redeemOtp').value = otp;
+        document.getElementById('redeemForm').submit();
+    }
+</script>
+</body>
+</html>

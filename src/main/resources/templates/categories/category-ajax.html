@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Danh mục</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .table-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .form-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+        }
+        .table {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table thead th {
+            background: linear-gradient(135deg, #343a40, #495057);
+            color: white;
+            font-weight: 600;
+            border: none;
+            padding: 15px 12px;
+        }
+        .table tbody td {
+            padding: 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .btn-action {
+            padding: 6px 12px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: none;
+            margin: 0 3px;
+            transition: all 0.2s ease;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            padding: 12px 15px;
+            transition: border-color 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        .alert {
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Form Section -->
+        <div class="form-section">
+            <h2 class="form-title" id="formTitle">Thêm Danh Mục Mới</h2>
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Tên Danh Mục</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="groupName" class="form-label">Nhóm</label>
+                        <input type="text" class="form-control" id="groupName" placeholder="Ví dụ: Điện tử, Thời trang...">
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="imageUrl" class="form-label">URL Hình Ảnh</label>
+                        <input type="text" class="form-control" id="imageUrl" placeholder="https://example.com/image.jpg">
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="btnSave">Lưu Danh Mục</button>
+                    <button type="button" class="btn btn-secondary" id="btnClear" onclick="clearForm()">Hủy / Thêm Mới</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <h2 class="form-title">Danh Sách Danh Mục</h2>
+            
+            <div class="loading" id="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+                <p class="mt-2">Đang tải danh sách danh mục...</p>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped" id="categoryTable">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên Danh Mục</th>
+                        <th>Nhóm</th>
+                        <th>Hình Ảnh</th>
+                        <th>Hành động</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Categories will be appended here via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        const apiUrl = '/api/categories';
+        
+        $(document).ready(function() {
+            loadCategories();
+        });
+
+        // Form submit
+        $('#categoryForm').on('submit', function(e) {
+            e.preventDefault();
+            saveCategory();
+        });
+
+        function saveCategory() {
+            const id = $('#categoryId').val();
+            const categoryData = {
+                name: $('#name').val().trim(),
+                groupName: $('#groupName').val().trim() || null,
+                imageUrl: $('#imageUrl').val().trim() || null
+            };
+
+            // Validate required fields
+            if (!categoryData.name) {
+                showAlert('Vui lòng điền tên danh mục', 'warning');
+                return;
+            }
+
+            showLoading();
+
+            if (id) {
+                // Update existing category
+                $.ajax({
+                    url: apiUrl + '/' + id,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(categoryData),
+                    success: function(updatedCategory) {
+                        hideLoading();
+                        showAlert('Cập nhật danh mục thành công!', 'success');
+                        loadCategories();
+                        clearForm();
+                    },
+                    error: function(err) {
+                        hideLoading();
+                        showAlert('Lỗi khi cập nhật danh mục: ' + (err.responseJSON?.message || err.statusText), 'danger');
+                    }
+                });
+            } else {
+                // Create new category
+                $.ajax({
+                    url: apiUrl,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(categoryData),
+                    success: function(newCategory) {
+                        hideLoading();
+                        showAlert('Thêm danh mục thành công!', 'success');
+                        loadCategories();
+                        clearForm();
+                    },
+                    error: function(err) {
+                        hideLoading();
+                        showAlert('Lỗi khi thêm danh mục: ' + (err.responseJSON?.message || err.statusText), 'danger');
+                    }
+                });
+            }
+        }
+
+        function loadCategories() {
+            showLoading();
+            
+            $.ajax({
+                url: apiUrl,
+                type: 'GET',
+                success: function(categories) {
+                    hideLoading();
+                    renderCategoryTable(categories);
+                },
+                error: function(err) {
+                    hideLoading();
+                    showAlert('Lỗi khi tải danh sách danh mục: ' + err.statusText, 'danger');
+                }
+            });
+        }
+
+        function renderCategoryTable(categories) {
+            const tbody = $('#categoryTable tbody');
+            tbody.empty();
+
+            if (categories.length === 0) {
+                tbody.append('<tr><td colspan="5" class="text-center">Không có danh mục nào</td></tr>');
+                return;
+            }
+
+            categories.forEach(function(cat) {
+                const imageHtml = cat.imageUrl 
+                    ? `<img src="${cat.imageUrl}" alt="${cat.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">`
+                    : '<span class="text-muted">Không có ảnh</span>';
+                
+                const tr = `<tr>
+                    <td>${cat.id}</td>
+                    <td>${cat.name}</td>
+                    <td>${cat.groupName || '-'}</td>
+                    <td>${imageHtml}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editCategory(${cat.id})">Sửa</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Xóa</button>
+                    </td>
+                </tr>`;
+                tbody.append(tr);
+            });
+        }
+
+        function editCategory(id) {
+            $.ajax({
+                url: apiUrl + '/' + id,
+                type: 'GET',
+                success: function(category) {
+                    $('#formTitle').text('Cập nhật Danh Mục (ID: ' + category.id + ')');
+                    $('#categoryId').val(category.id);
+                    $('#name').val(category.name);
+                    $('#groupName').val(category.groupName || '');
+                    $('#imageUrl').val(category.imageUrl || '');
+                    $('#btnSave').text('Cập nhật Danh Mục').removeClass('btn-primary').addClass('btn-success');
+                    
+                    // Scroll to form
+                    $('.form-section')[0].scrollIntoView({ behavior: 'smooth' });
+                },
+                error: function(err) {
+                    showAlert('Lỗi khi tải thông tin danh mục: ' + err.statusText, 'danger');
+                }
+            });
+        }
+
+        function deleteCategory(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
+                $.ajax({
+                    url: apiUrl + '/' + id,
+                    type: 'DELETE',
+                    success: function() {
+                        showAlert('Xóa danh mục thành công!', 'success');
+                        loadCategories();
+                    },
+                    error: function(err) {
+                        showAlert('Lỗi khi xóa danh mục: ' + err.statusText, 'danger');
+                    }
+                });
+            }
+        }
+
+        // Reset Form
+        function clearForm() {
+            $('#formTitle').text('Thêm Danh Mục Mới');
+            $('#categoryId').val('');
+            $('#name').val('');
+            $('#groupName').val('');
+            $('#imageUrl').val('');
+            $('#btnSave').text('Lưu Danh Mục').removeClass('btn-success').addClass('btn-primary');
+        }
+
+        // Loading and Alert functions
+        function showLoading() {
+            $('#loading').show();
+            $('#categoryTable').hide();
+        }
+
+        function hideLoading() {
+            $('#loading').hide();
+            $('#categoryTable').show();
+        }
+
+        function showAlert(message, type) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // Remove existing alerts
+            $('.alert').remove();
+            
+            // Add new alert at the top of the container
+            $('.main-container').prepend(alertHtml);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                $('.alert').fadeOut();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

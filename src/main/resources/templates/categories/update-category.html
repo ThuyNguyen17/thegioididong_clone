@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Update Category</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<section layout:fragment="content" class="container mt-5">
+    <h1 class="mb-4">Update Category</h1>
+    <form th:action="@{/categories/update/{id}(id=${category.id})}"
+          th:object="${category}" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        <div class="mb-3">
+            <label for="name" class="form-label">Category Name:</label>
+            <input type="text" th:field="*{name}" class="form-control" id="name"
+                   required>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                 th:errors="*{name}">Valid name is required.</div>
+        </div>
+        <div class="mb-3">
+            <label for="groupName" class="form-label">Nhom menu phu kien:</label>
+            <select id="groupName" th:field="*{groupName}" class="form-select">
+                <option value="">-- Chon nhom --</option>
+                <option value="Camera">Camera</option>
+                <option value="Thiet bi am thanh">Thiet bi am thanh</option>
+                <option value="Phu kien khac">Phu kien khac</option>
+                <option value="Phu kien gaming">Phu kien gaming</option>
+            </select>
+        </div>
+        <div class="mb-3" th:if="${category.imageUrl != null and !#strings.isEmpty(category.imageUrl)}">
+            <img th:src="@{/images/{img}(img=${category.imageUrl})}" alt="Category image" style="max-width: 140px; border-radius: 8px;">
+        </div>
+        <div class="mb-3">
+            <label for="imageFile" class="form-label">Doi hinh danh muc:</label>
+            <input type="file" id="imageFile" name="imageFile" accept="image/*" class="form-control"/>
+            <small class="text-muted">Khong chon file moi thi se giu hinh cu.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a th:href="@{/categories}" class="btn btn-link">Cancel</a>
+    </form>
+</section>
+<script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+</script>
+</body>
+</html>

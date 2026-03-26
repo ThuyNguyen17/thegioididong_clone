@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm sản phẩm</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link th:href="@{/css/style.css}" rel="stylesheet" />
+    <style>
+        .product-create-page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px 14px 36px;
+        }
+
+        .product-create-card {
+            background: #fff;
+            border: 1px solid #f0e6bf;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .product-create-head {
+            padding: 18px 22px;
+            background: linear-gradient(120deg, #fff6d9 0%, #fff 100%);
+            border-bottom: 1px solid #f2e9c7;
+        }
+
+        .product-create-head h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+            color: #1f2937;
+        }
+
+        .product-create-head p {
+            margin: 6px 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .product-create-body {
+            padding: 20px;
+        }
+
+        .product-create-page .form-label {
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .product-create-page .form-control,
+        .product-create-page .form-select {
+            border-radius: 10px;
+            min-height: 42px;
+        }
+
+        .preview-box {
+            margin-top: 12px;
+            width: 180px;
+            height: 180px;
+            border-radius: 12px;
+            border: 1px dashed #d1d5db;
+            display: none;
+            object-fit: cover;
+            background: #fafafa;
+        }
+    </style>
+</head>
+
+<body>
+    <th:block th:replace="~{fragments/header :: siteHeader}"></th:block>
+
+    <!-- Alert Container for AJAX messages -->
+    <div id="alertContainer" style="position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px;"></div>
+
+    <section class="product-create-page">
+        <div class="product-create-card">
+            <div class="product-create-head">
+                <h1>Thêm sản phẩm mới</h1>
+                <p>Nhập thông tin để tạo sản phẩm và hiển thị trên hệ thống.</p>
+            </div>
+
+            <div class="product-create-body">
+                <form id="addProductForm">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">Tên sản phẩm</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">Giá gốc</label>
+                            <input type="number" name="price" class="form-control" min="1" step="0.01" required>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">Danh mục</label>
+                            <select name="categoryId" class="form-select" required>
+                                <option value="" selected disabled>-- Chọn danh mục --</option>
+                                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">Trạng thái giảm giá</label>
+                            <select id="discountType" class="form-select">
+                                <option value="none">Không giảm giá</option>
+                                <option value="discounted">Có giảm giá</option>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 d-none" id="discountPriceWrap">
+                            <label class="form-label">Giá sau giảm</label>
+                            <input type="number" name="discountedPrice" id="discountedPriceInput"
+                                class="form-control" min="1" step="0.01">
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">Số lượng kho</label>
+                            <input type="number" name="promoStock" id="promoStockInput" class="form-control" min="0">
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label class="form-label">Mô tả</label>
+                            <textarea name="description" class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label class="form-label">Hình ảnh sản phẩm</label>
+                            <input type="file" name="imageFile" class="form-control" accept="image/*"
+                                onchange="previewImage(event)">
+                            <img id="imagePreview" class="preview-box" alt="Xem trước ảnh">
+                        </div>
+
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-primary">Lưu sản phẩm</button>
+                        <a th:href="@{/product}" class="btn btn-outline-secondary">Quay lại danh sách</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/product-api.js}"></script>
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('imagePreview');
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
+        }
+
+        const discountType = document.getElementById('discountType');
+        const discountWrap = document.getElementById('discountPriceWrap');
+        const discountInput = document.getElementById('discountedPriceInput');
+        const promoWrap = document.getElementById('promoStockWrap');
+        const promoInput = document.getElementById('promoStockInput');
+
+        function toggleDiscountInput() {
+            const show = discountType.value === 'discounted';
+            discountWrap.classList.toggle('d-none', !show);
+            discountInput.required = show;
+            if (!show) {
+                discountInput.value = '';
+            }
+
+            promoWrap.classList.toggle('d-none', !show);
+            promoInput.required = show;
+            if (!show) {
+                promoInput.value = '0';
+            }
+        }
+
+        discountType.addEventListener('change', toggleDiscountInput);
+        toggleDiscountInput();
+
+        async function uploadImage(file) {
+            const fd = new FormData();
+            fd.append('imageFile', file);
+
+            const resp = await fetch('/api/products/upload', {
+                method: 'POST',
+                body: fd
+            });
+
+            if (!resp.ok) {
+                throw new Error('KhÃ´ng thá»ƒ táº£i áº£nh lÃªn server');
+            }
+
+            const data = await resp.json();
+            return data.imageUrl || null;
+        }
+
+        // Handle form submission via AJAX
+        document.getElementById('addProductForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const imageFile = formData.get('imageFile');
+            const discountActive = discountType.value === 'discounted';
+
+            let imageUrl = null;
+            try {
+                if (imageFile && imageFile.size > 0) {
+                    imageUrl = await uploadImage(imageFile);
+                }
+            } catch (error) {
+                showAlert('Lá»—i: ' + error.message, 'danger');
+                return;
+            }
+
+            const productData = {
+                name: formData.get('name'),
+                price: parseFloat(formData.get('price')),
+                description: formData.get('description') || null,
+                imageUrl: imageUrl,
+                categoryId: parseInt(formData.get('categoryId')),
+                discountedPrice: discountActive && formData.get('discountedPrice') ? parseFloat(formData.get('discountedPrice')) : null,
+                promoStock: parseInt(formData.get('promoStock')) || 0
+            };
+
+            // Validate required fields
+            if (!productData.name || !productData.price || !productData.categoryId) {
+                showAlert('Vui lòng điền đúng thông tin bắt buộc', 'warning');
+                return;
+            }
+
+            showLoading();
+
+            ProductAPI.createProduct(productData)
+                .then(product => {
+                    hideLoading();
+                    showAlert('Thêm sản phẩm thành công! Đang chuyển hướng...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/product';
+                    }, 1500);
+                })
+                .catch(error => {
+                    hideLoading();
+                    showAlert('Lỗi: ' + error.message, 'danger');
+                });
+        });
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const icons = {
+                success: 'check-circle',
+                danger: 'exclamation-circle',
+                warning: 'triangle-exclamation',
+                info: 'circle-info'
+            };
+
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show rounded-4 border-0 shadow-sm" role="alert">
+                    <i class="fas fa-${icons[type]} me-2"></i>${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+            
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        function showLoading() {
+            let loader = document.getElementById('loadingIndicator');
+            if (!loader) {
+                loader = document.createElement('div');
+                loader.id = 'loadingIndicator';
+                loader.className = 'spinner-border text-primary';
+                loader.style.position = 'fixed';
+                loader.style.top = '50%';
+                loader.style.left = '50%';
+                loader.style.transform = 'translate(-50%, -50%)';
+                loader.style.zIndex = '9998';
+                document.body.appendChild(loader);
+            }
+            loader.style.display = 'block';
+        }
+
+        function hideLoading() {
+            const loader = document.getElementById('loadingIndicator');
+            if (loader) {
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>
